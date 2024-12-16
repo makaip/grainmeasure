@@ -1,7 +1,7 @@
 import cv2
 import os
 import csv
-
+import matplotlib.pyplot as plt
 
 def preprocess_image(path):
     image = cv2.imread(path)
@@ -57,7 +57,7 @@ def count_grains(path, output_dir):
     grain_count = len(grain_shortest_lengths)
     filename = os.path.splitext(os.path.basename(path))[0]
     save_images(output_dir, filename, binary, contours_image, ellipses_image)
-    return average_length_mm, grain_count
+    return average_length_mm, grain_count, grain_shortest_lengths
 
 
 def process_images_in_directory(directory):
@@ -68,17 +68,36 @@ def process_images_in_directory(directory):
     results = []
 
     os.makedirs(output_dir, exist_ok=True)
+    all_grain_sizes = {}
+
     with open(csv_path, mode="w", newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(["file", "average", "count"])
         for filename in files:
             filepath = os.path.join(directory, filename)
             print(f"Processing {filepath}")
-            average_length, grain_count = count_grains(filepath, output_dir)
+            average_length, grain_count, grain_sizes = count_grains(filepath, output_dir)
             writer.writerow([filename, average_length, grain_count])
             results.append((filename, average_length, grain_count))
+            all_grain_sizes[filename] = grain_sizes
+    
+    # Plot histograms
+    plot_histograms(all_grain_sizes)
     return results
 
+def plot_histograms(grain_sizes_dict):
+    for filename, grain_sizes in grain_sizes_dict.items():
+        plt.figure(figsize=(10, 6))
+        # Increase the resolution by doubling the bins
+        plt.hist(grain_sizes, bins=40, color='blue', edgecolor='black', alpha=0.7)  # Use 40 bins instead of 20
+        plt.title(f"Grain Size Distribution: {filename}")
+        plt.xlabel("Grain Size (mm)")
+        plt.ylabel("Frequency")
+        plt.grid(True)
+        output_dir = "output"
+        histogram_path = os.path.join(output_dir, f"{filename}-histogram.png")
+        plt.savefig(histogram_path)  # Save the histogram to a file
+        plt.close()  # Close the figure to free up memory and avoid showing it interactively
 
 results = process_images_in_directory("data")
 print(results)
