@@ -2,6 +2,7 @@ import cv2
 import os
 import csv
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 def preprocess_image(path):
     image = cv2.imread(path)
@@ -44,7 +45,7 @@ def save_images(output_dir, filename, binary, contours_image, ellipses_image):
 
 def count_grains(path, output_dir):
     calibration_factor = 0.0039016750486215255
-    max_length_mm = 25
+    max_length_mm = 4
 
     image, binary = preprocess_image(path)
     contours = find_and_filter_contours(binary)
@@ -81,23 +82,29 @@ def process_images_in_directory(directory):
             results.append((filename, average_length, grain_count))
             all_grain_sizes[filename] = grain_sizes
     
-    # Plot histograms
     plot_histograms(all_grain_sizes)
     return results
 
+
 def plot_histograms(grain_sizes_dict):
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+
     for filename, grain_sizes in grain_sizes_dict.items():
         plt.figure(figsize=(10, 6))
-        # Increase the resolution by doubling the bins
-        plt.hist(grain_sizes, bins=40, color='blue', edgecolor='black', alpha=0.7)  # Use 40 bins instead of 20
+        plt.hist(grain_sizes, bins=60, color='blue', edgecolor='black', alpha=0.7, density=True, label="Histogram")
+        sns.kdeplot(grain_sizes, color='red', linewidth=2, label="KDE")
+
         plt.title(f"Grain Size Distribution: {filename}")
         plt.xlabel("Grain Size (mm)")
-        plt.ylabel("Frequency")
+        plt.ylabel("Density")
+        plt.legend(loc="upper right")
         plt.grid(True)
-        output_dir = "output"
-        histogram_path = os.path.join(output_dir, f"{filename}-histogram.png")
-        plt.savefig(histogram_path)  # Save the histogram to a file
-        plt.close()  # Close the figure to free up memory and avoid showing it interactively
+
+        histogram_path = os.path.join(output_dir, f"{filename}-histogram-kde.png")
+        plt.savefig(histogram_path)
+        plt.close()
+
 
 results = process_images_in_directory("data")
 print(results)

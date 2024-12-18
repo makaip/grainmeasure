@@ -1,7 +1,6 @@
 import cv2
 import tkinter as tk
 
-# Global variable to store points
 points = []
 
 def get_points(event, x, y, flags, param):
