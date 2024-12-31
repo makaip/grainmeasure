@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
@@ -56,7 +58,6 @@ def contouralg(image, calibration_factor=0.0039016750486215255, max_length_mm=3)
         "grain_count": len(grain_lengths),
     }
 
-
 def coloralg(image, saturation_factor=1.2, calibration_factor=0.0039016750486215255, max_length_mm=3):
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     hsv_image[:, :, 1] = cv2.multiply(hsv_image[:, :, 1], saturation_factor)
@@ -99,7 +100,6 @@ def coloralg(image, saturation_factor=1.2, calibration_factor=0.0039016750486215
 
     avg_length = sum(grain_lengths) / len(grain_lengths) if grain_lengths else 0
 
-    # Generate histogram image
     plt.figure(figsize=(10, 6))
     plt.hist(grain_lengths, bins=60, color='blue', edgecolor='black', alpha=0.7, density=True)
     sns.kdeplot(grain_lengths, color='red', linewidth=2)
