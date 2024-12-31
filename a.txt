@@ -1,0 +1,23 @@
+consider the following two functions
+
+def coloralg(image, saturation_factor=1.2, calibration_factor=0.0039016750486215255, max_length_mm=3): which returns {
+    "binary_image": gray_image,
+    "contours_image": contours_image,
+    "ellipses_image": ellipses_image,
+    "histogram_image": histogram_image,
+    "average_length": avg_length,
+    "grain_count": len(grain_lengths),
+}
+
+and def contouralg(image, calibration_factor=0.0039016750486215255, max_length_mm=3): and it returns {
+    "binary_image": binary,
+    "contours_image": contours_image,
+    "ellipses_image": ellipses_image,
+    "histogram_image": histogram_image,
+    "average_length": avg_length,
+    "grain_count": len(grain_lengths),
+}
+
+note that the image is not a path. it is the image itself. make a flask app where the user can upload a picture, and then it automatically displays the four output images and the average length and grain lengths on the page. 
+
+
