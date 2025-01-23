@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
+import csv
 
 def save_image(image, filename):
     """Save an image to a file."""
@@ -33,17 +35,26 @@ def analyze_contours(contours, image, calibration_factor, max_length_mm):
     return ellipses_image, grain_lengths
 
 # Ensure output directory exists
-output_dir = "data/combo-output"
+output_dir = "data/combo-output/"
 os.makedirs(output_dir, exist_ok=True)
+
+# Prepare CSV for results
+results_csv_path = os.path.join(output_dir, "results.csv")
+with open(results_csv_path, "w", newline="") as csvfile:
+    csvwriter = csv.writer(csvfile)
+    csvwriter.writerow(["file", "average", "count"])
 
 # Calibration factor and max length in mm
 calibration_factor = 0.0039016750486215255
-max_length_mm = 5.0
+max_length_mm = 0.4
+
+# Store all grain lengths for combined histogram
+all_grain_lengths = []
 
 # Process all images in the input directory
-input_dir = "data/input"
+input_dir = "data/input/"
 for filename in os.listdir(input_dir):
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+    if filename.startswith("233") and filename.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
         image_path = os.path.join(input_dir, filename)
         image = cv2.imread(image_path)
 
@@ -96,19 +107,56 @@ for filename in os.listdir(input_dir):
         ellipses_path = os.path.join(output_dir, f"{base_name}-ellipse.jpg")
         save_image(ellipses_image, ellipses_path)
 
-        # Display results
-        print(f"{filename} - Number of valid grains: {len(grain_lengths)}")
-        print(f"{filename} - Average grain size (minor axis): {np.mean(grain_lengths):.2f} mm")
+        # Write results to CSV
+        with open(results_csv_path, "a", newline="") as csvfile:
+            csvwriter = csv.writer(csvfile)
+            csvwriter.writerow([filename, np.mean(grain_lengths) if grain_lengths else 0, len(grain_lengths)])
+        
+        # Add to combined grain lengths with color category
+        if filename.startswith("233800") or filename.startswith("233801"):
+            color = '#00447c'
+            core_type = 'Muddy Core'
+        else:
+            color = '#d31145'
+            core_type = 'Sandy Core'
+        all_grain_lengths.append((grain_lengths, color, filename, core_type))
 
-        # Plot histogram
+        # Plot KDE histogram for current image
         plt.figure(figsize=(10, 6))
-        plt.hist(grain_lengths, bins=50, color='blue', edgecolor='black', alpha=0.7)
-        plt.title(f"Histogram of Grain Sizes (Minor Axis) - {filename}")
+        # sns.histplot(grain_lengths, bins=30, kde=False, color=color, alpha=0.1, stat="density")  # Add histogram
+        sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5)  # Adjust bandwidth
+        plt.title(f"KDE Histogram of Grain Sizes (Minor Axis) - {filename}")
         plt.xlabel("Grain Size (mm)")
-        plt.ylabel("Frequency")
+        plt.ylabel("Density")
         plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-        # Save histogram
+        # Save individual histogram
         histogram_path = os.path.join(output_dir, f"{base_name}-histogram.jpg")
         plt.savefig(histogram_path)
         plt.close()
+
+
+# Plot combined KDE histogram with separate lines for each image
+plt.figure(figsize=(12, 8))
+
+for grain_lengths, color, filename, core_type in all_grain_lengths:
+    # sns.histplot(grain_lengths, bins=30, kde=False, color=color, alpha=0.0, stat="density")  # Add histogram
+    sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5)  # Adjust bandwidth
+
+plt.title("Combined KDE Histogram of Grain Sizes (Minor Axis)")
+plt.xlabel("Grain Size (mm)")
+plt.ylabel("Density")
+
+# Add legend for core types
+handles = [
+    plt.Line2D([0], [0], color='#00447c', lw=2, label='Muddy Core'),
+    plt.Line2D([0], [0], color='#d31145', lw=2, label='Sandy Core')
+]
+
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.legend(handles=handles, title="Core Types")
+
+# Save combined histogram
+combined_histogram_path = os.path.join(output_dir, "combined-histogram.jpg")
+plt.savefig(combined_histogram_path)
+plt.close()

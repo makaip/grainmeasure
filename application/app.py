@@ -1,56 +1,37 @@
-from flask import Flask, render_template, request, jsonify
-import cv2
-import numpy as np
-from processing import *
-import base64
+from tkinter import Tk, Frame, Listbox, Scrollbar, VERTICAL, RIGHT, Y, BOTH
+from gui import PanZoomCanvas, browse_images, display_image
+from process import get_elipses
 
-app = Flask(__name__)
+def setup_ui():
+    """Set up the main application window and widgets."""
+    app = Tk()
+    app.title("Image Browser with Pan and Zoom")
+    app.geometry("1300x540")
 
-def encode_image_to_base64(image):
-    """Encode a CV2 image to base64 string."""
-    _, buffer = cv2.imencode('.png', image)
-    return base64.b64encode(buffer).decode('utf-8')
+    list_frame = Frame(app)
+    list_frame.pack(side="left", fill="y")
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+    canvas_frame = Frame(app)
+    canvas_frame.pack(side="right", expand=True, fill="both")
 
-@app.route('/process', methods=['POST'])
-def process_image():
-    algorithm = request.args.get('algorithm')
-    if 'image' not in request.files:
-        return jsonify({'error': 'No image uploaded'}), 400
+    listbox = Listbox(list_frame, width=50, height=30)
+    listbox.pack(side="left", fill="y", padx=10, pady=10)
 
-    file = request.files['image']
-    np_image = np.frombuffer(file.read(), np.uint8)
-    image = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
+    scrollbar = Scrollbar(list_frame, orient=VERTICAL)
+    scrollbar.pack(side=RIGHT, fill=Y)
 
-    if algorithm == 'coloralg':
-        saturation_factor = float(request.form.get('saturation', 1.0))
-        color_results = coloralg(image, saturation_factor=saturation_factor)
-        results = {
-            'binary_image': encode_image_to_base64(color_results['binary_image']),
-            'contours_image': encode_image_to_base64(color_results['contours_image']),
-            'ellipses_image': encode_image_to_base64(color_results['ellipses_image']),
-            'histogram_image': encode_image_to_base64(color_results['histogram_image']),
-            'average_length': color_results['average_length'],
-            'grain_count': color_results['grain_count']
-        }
-    elif algorithm == 'contouralg':
-        contour_results = contouralg(image)
-        results = {
-            'binary_image': encode_image_to_base64(contour_results['binary_image']),
-            'contours_image': encode_image_to_base64(contour_results['contours_image']),
-            'ellipses_image': encode_image_to_base64(contour_results['ellipses_image']),
-            'histogram_image': encode_image_to_base64(contour_results['histogram_image']),
-            'average_length': contour_results['average_length'],
-            'grain_count': contour_results['grain_count']
-        }
-    else:
-        return jsonify({'error': 'Invalid algorithm'}), 400
+    listbox.config(yscrollcommand=scrollbar.set)
+    scrollbar.config(command=listbox.yview)
 
-    return jsonify(results)
+    canvas = PanZoomCanvas(canvas_frame, bg="white")
+    canvas.pack(expand=True, fill=BOTH)
 
+    listbox.bind("<<ListboxSelect>>", lambda event: display_image(event, listbox, canvas, get_elipses))
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    browse_images(listbox)
+
+    return app
+
+if __name__ == "__main__":
+    app = setup_ui()
+    app.mainloop()
