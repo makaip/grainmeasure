@@ -1,2 +1,7 @@
 /ai/sam_vit_h_4b8939.pth
 /application/__pycache__/
+/data/ai-output/*
+/data/color-output/*
+/data/combo-output/*
+/data/contour-output/*
+/data/input/*
