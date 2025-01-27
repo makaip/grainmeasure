@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
 import os
 import csv
@@ -86,7 +87,7 @@ for filename in os.listdir(input_dir):
         # Save binary image
         base_name, _ = os.path.splitext(filename)
         binary_path = os.path.join(output_dir, f"{base_name}-binary.jpg")
-        save_image(binary, binary_path)
+        # save_image(binary, binary_path)
 
         # Invert the color contour
         inverted_color_contour = cv2.bitwise_not(color_contour)
@@ -94,7 +95,7 @@ for filename in os.listdir(input_dir):
 
         # Save contour image
         contour_path = os.path.join(output_dir, f"{base_name}-contour.jpg")
-        save_image(sharpened_binary, contour_path)
+        # save_image(sharpened_binary, contour_path)
 
         # Convert sharpened_binary to single-channel
         sharpened_binary_gray = cv2.cvtColor(sharpened_binary, cv2.COLOR_BGR2GRAY)
@@ -105,13 +106,15 @@ for filename in os.listdir(input_dir):
 
         # Save ellipses image
         ellipses_path = os.path.join(output_dir, f"{base_name}-ellipse.jpg")
-        save_image(ellipses_image, ellipses_path)
+        # save_image(ellipses_image, ellipses_path)
 
         # Write results to CSV
+        """
         with open(results_csv_path, "a", newline="") as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerow([filename, np.mean(grain_lengths) if grain_lengths else 0, len(grain_lengths)])
-        
+        """
+
         # Add to combined grain lengths with color category
         if filename.startswith("233800") or filename.startswith("233801"):
             color = '#00447c'
@@ -121,6 +124,7 @@ for filename in os.listdir(input_dir):
             core_type = 'Sandy Core'
         all_grain_lengths.append((grain_lengths, color, filename, core_type))
 
+        """
         # Plot KDE histogram for current image
         plt.figure(figsize=(10, 6))
         # sns.histplot(grain_lengths, bins=30, kde=False, color=color, alpha=0.1, stat="density")  # Add histogram
@@ -134,27 +138,45 @@ for filename in os.listdir(input_dir):
         histogram_path = os.path.join(output_dir, f"{base_name}-histogram.jpg")
         plt.savefig(histogram_path)
         plt.close()
+        """
 
 
-# Plot combined KDE histogram with separate lines for each image
 plt.figure(figsize=(12, 8))
 
+# Main KDE plot
 for grain_lengths, color, filename, core_type in all_grain_lengths:
-    # sns.histplot(grain_lengths, bins=30, kde=False, color=color, alpha=0.0, stat="density")  # Add histogram
     sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5)  # Adjust bandwidth
 
 plt.title("Combined KDE Histogram of Grain Sizes (Minor Axis)")
 plt.xlabel("Grain Size (mm)")
 plt.ylabel("Density")
 
-# Add legend for core types
+# Add legend for core types and move it to the bottom-right corner
 handles = [
     plt.Line2D([0], [0], color='#00447c', lw=2, label='Muddy Core'),
     plt.Line2D([0], [0], color='#d31145', lw=2, label='Sandy Core')
 ]
+plt.legend(handles=handles, title="Core Types", loc="lower right")  # Set legend to the bottom-right corner
 
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-plt.legend(handles=handles, title="Core Types")
+# Remove gridlines and markers from Y-axis
+plt.gca().yaxis.set_ticks_position('none')  # Remove Y-axis ticks
+plt.gca().yaxis.set_ticklabels([])  # Remove Y-axis tick labels
+plt.gca().grid(False)  # Remove all gridlines
+
+# Create zoomed-in inset
+ax_main = plt.gca()
+ax_inset = inset_axes(ax_main, width="40%", height="40%", loc="upper right")  # Inset size and location
+ax_inset.set_xlim(0.025, 0.2)  # Zoomed-in range for x-axis
+
+# Add the KDE plots to the inset
+for grain_lengths, color, filename, core_type in all_grain_lengths:
+    sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5, ax=ax_inset)
+
+# Remove gridlines and markers from Y-axis in the inset
+ax_inset.yaxis.set_ticks_position('none')  # Remove Y-axis ticks
+ax_inset.yaxis.set_ticklabels([])  # Remove Y-axis tick labels
+ax_inset.grid(False)  # Remove all gridlines
+ax_inset.set_ylim(0, 5)
 
 # Save combined histogram
 combined_histogram_path = os.path.join(output_dir, "combined-histogram.jpg")
