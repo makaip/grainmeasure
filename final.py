@@ -143,42 +143,52 @@ for filename in os.listdir(input_dir):
 
 plt.figure(figsize=(12, 8))
 
-# Main KDE plot
+# Compute histogram bin counts for scaling
+all_data = np.concatenate([np.array(grain_lengths) for grain_lengths, _, _, _ in all_grain_lengths])  
+hist_counts, bin_edges = np.histogram(all_data, bins=50)
+max_hist_count = hist_counts.max()
+
+# Main KDE plot (scaled to histogram height)
 for grain_lengths, color, filename, core_type in all_grain_lengths:
-    sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5)  # Adjust bandwidth
+    grain_lengths = np.array(grain_lengths)  # Convert to NumPy array
+    grain_series = pd.Series(grain_lengths)  # Convert to Pandas Series
+
+    sns.kdeplot(grain_series, color=color, bw_adjust=0.5, clip=(0.00, None), 
+                common_norm=False, stat="count")  # Ensure KDE matches histogram scaling
 
 plt.title("Combined KDE Histogram of Grain Sizes (Minor Axis)")
 plt.xlabel("Grain Size (mm)")
-plt.ylabel("Density")
+plt.ylabel("Frequency")  # Change label from "Density" to "Frequency"
 
 # Add legend for core types and move it to the bottom-right corner
 handles = [
     plt.Line2D([0], [0], color='#00447c', lw=2, label='Muddy Core'),
     plt.Line2D([0], [0], color='#d31145', lw=2, label='Sandy Core')
 ]
-plt.legend(handles=handles, title="Core Types", loc="lower right")  # Set legend to the bottom-right corner
+plt.legend(handles=handles, title="Core Types", loc="lower right")
 
-# Remove gridlines and markers from Y-axis
-plt.gca().yaxis.set_ticks_position('none')  # Remove Y-axis ticks
-plt.gca().yaxis.set_ticklabels([])  # Remove Y-axis tick labels
-plt.gca().grid(False)  # Remove all gridlines
+# Keep gridlines off but restore y-axis ticks and labels
+plt.gca().grid(False)
 
 # Create zoomed-in inset
 ax_main = plt.gca()
-ax_inset = inset_axes(ax_main, width="40%", height="40%", loc="upper right")  # Inset size and location
-ax_inset.set_xlim(0.025, 0.2)  # Zoomed-in range for x-axis
+ax_inset = inset_axes(ax_main, width="40%", height="40%", loc="upper right")
+ax_inset.set_xlim(0.025, 0.2)
 
-# Add the KDE plots to the inset
+# Add the KDE plots to the inset, also scaled to histogram heights
 for grain_lengths, color, filename, core_type in all_grain_lengths:
-    sns.kdeplot(grain_lengths, color=color, bw_adjust=0.5, ax=ax_inset)
+    grain_lengths = np.array(grain_lengths)
+    grain_series = pd.Series(grain_lengths)
 
-# Remove gridlines and markers from Y-axis in the inset
-ax_inset.yaxis.set_ticks_position('none')  # Remove Y-axis ticks
-ax_inset.yaxis.set_ticklabels([])  # Remove Y-axis tick labels
-ax_inset.grid(False)  # Remove all gridlines
-ax_inset.set_ylim(0, 5)
+    sns.kdeplot(grain_series, color=color, bw_adjust=0.5, ax=ax_inset, clip=(0.00, None), 
+                common_norm=False, stat="count")
+
+# Restore y-axis ticks and labels in the inset
+ax_inset.grid(False)
+ax_inset.set_ylim(0, max_hist_count)
 
 # Save combined histogram
 combined_histogram_path = os.path.join(output_dir, "combined-histogram.jpg")
 plt.savefig(combined_histogram_path)
 plt.close()
+
