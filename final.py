@@ -5,6 +5,8 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import seaborn as sns
 import os
 import csv
+import scipy.stats as sts
+
 
 def save_image(image, filename):
     """Save an image to a file."""
@@ -143,22 +145,27 @@ for filename in os.listdir(input_dir):
 
 plt.figure(figsize=(12, 8))
 
-# Compute histogram bin counts for scaling
-all_data = np.concatenate([np.array(grain_lengths) for grain_lengths, _, _, _ in all_grain_lengths])  
-hist_counts, bin_edges = np.histogram(all_data, bins=50)
-max_hist_count = hist_counts.max()
-
-# Main KDE plot (scaled to histogram height)
+# Iterate over all grain size datasets
 for grain_lengths, color, filename, core_type in all_grain_lengths:
-    grain_lengths = np.array(grain_lengths)  # Convert to NumPy array
-    grain_series = pd.Series(grain_lengths)  # Convert to Pandas Series
+    # Compute histogram
+    num_bins = 40
+    counts, bin_edges = np.histogram(grain_lengths, bins=num_bins)
+    bin_width = np.diff(bin_edges)[0]
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    total_count = len(grain_lengths)
 
-    sns.kdeplot(grain_series, color=color, bw_adjust=0.5, clip=(0.00, None), 
-                common_norm=False, stat="count")  # Ensure KDE matches histogram scaling
+    # Compute KDE and scale it to match histogram counts
+    kde = sts.gaussian_kde(grain_lengths, bw_method=0.1)
+    x_vals = np.linspace(bin_edges.min(), bin_edges.max(), 500)
+    kde_counts = kde.pdf(x_vals) * total_count * bin_width  # Scale KDE to match counts
 
+    # Plot KDE
+    plt.plot(x_vals, kde_counts, color=color, lw=2)
+
+# Plot settings
 plt.title("Combined KDE Histogram of Grain Sizes (Minor Axis)")
 plt.xlabel("Grain Size (mm)")
-plt.ylabel("Frequency")  # Change label from "Density" to "Frequency"
+plt.ylabel("Count")
 
 # Add legend for core types and move it to the bottom-right corner
 handles = [
@@ -167,7 +174,7 @@ handles = [
 ]
 plt.legend(handles=handles, title="Core Types", loc="lower right")
 
-# Keep gridlines off but restore y-axis ticks and labels
+# Keep gridlines off but **restore y-axis ticks and labels**
 plt.gca().grid(False)
 
 # Create zoomed-in inset
@@ -175,20 +182,16 @@ ax_main = plt.gca()
 ax_inset = inset_axes(ax_main, width="40%", height="40%", loc="upper right")
 ax_inset.set_xlim(0.025, 0.2)
 
-# Add the KDE plots to the inset, also scaled to histogram heights
+# Add the KDE plots to the inset with count scaling
 for grain_lengths, color, filename, core_type in all_grain_lengths:
-    grain_lengths = np.array(grain_lengths)
-    grain_series = pd.Series(grain_lengths)
-
-    sns.kdeplot(grain_series, color=color, bw_adjust=0.5, ax=ax_inset, clip=(0.00, None), 
-                common_norm=False, stat="count")
+    kde = sts.gaussian_kde(grain_lengths, bw_method=0.1)
+    kde_counts = kde.pdf(x_vals) * len(grain_lengths) * bin_width  # Scale KDE
+    ax_inset.plot(x_vals, kde_counts, color=color, lw=2)
 
 # Restore y-axis ticks and labels in the inset
 ax_inset.grid(False)
-ax_inset.set_ylim(0, max_hist_count)
 
 # Save combined histogram
 combined_histogram_path = os.path.join(output_dir, "combined-histogram.jpg")
 plt.savefig(combined_histogram_path)
 plt.close()
-
