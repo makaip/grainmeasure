@@ -163,24 +163,22 @@ for grain_lengths, color, filename, core_type in all_grain_lengths:
     plt.plot(x_vals, kde_counts, color=color, lw=2)
 
 # Plot settings
-plt.title("Combined KDE Histogram of Grain Sizes (Minor Axis)")
 plt.xlabel("Grain Size (mm)")
 plt.ylabel("Count")
-
-# Add legend for core types and move it to the bottom-right corner
-handles = [
-    plt.Line2D([0], [0], color='#00447c', lw=2, label='Muddy Core'),
-    plt.Line2D([0], [0], color='#d31145', lw=2, label='Sandy Core')
-]
-plt.legend(handles=handles, title="Core Types", loc="lower right")
 
 # Keep gridlines off but **restore y-axis ticks and labels**
 plt.gca().grid(False)
 
+plt.margins(0)
+plt.gca().set_ylim(0, 800)
+plt.gca().set_xlim(0, 0.3)
+
 # Create zoomed-in inset
 ax_main = plt.gca()
 ax_inset = inset_axes(ax_main, width="40%", height="40%", loc="upper right")
-ax_inset.set_xlim(0.025, 0.2)
+ax_inset.set_xlim(0.05, 0.15)
+ax_inset.set_ylim(0, 200)
+ax_inset.margins(0)
 
 # Add the KDE plots to the inset with count scaling
 for grain_lengths, color, filename, core_type in all_grain_lengths:
@@ -190,6 +188,14 @@ for grain_lengths, color, filename, core_type in all_grain_lengths:
 
 # Restore y-axis ticks and labels in the inset
 ax_inset.grid(False)
+
+# Add legend for core types and move it to the bottom-right corner
+handles = [
+    plt.Line2D([0], [0], color='#00447c', lw=2, label='Muddy Core'),
+    plt.Line2D([0], [0], color='#d31145', lw=2, label='Sandy Core')
+]
+plt.legend(handles=handles, title="Core Types", loc="upper right")
+
 
 # Save combined histogram
 combined_histogram_path = os.path.join(output_dir, "combined-histogram.jpg")
